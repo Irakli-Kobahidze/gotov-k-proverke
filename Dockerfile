@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # 1. Сборка мини-приложения (React + MAX UI)
 FROM node:24-alpine AS web
 WORKDIR /web
@@ -20,14 +18,17 @@ ENV NODE_ENV=production \
     DATA_DIR=/data \
     WEB_DIR=/app/web \
     PORT=8080 \
+    TZ=Europe/Moscow \
     NODE_EXTRA_CA_CERTS=/app/certs/max-ca-bundle.pem
+RUN apk add --no-cache su-exec && mkdir -p /data && chown node:node /data
 WORKDIR /app/server
 COPY certs/max-ca-bundle.pem /app/certs/
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 COPY server/ ./
 COPY --from=deps /server/node_modules ./node_modules
 COPY --from=web /web/dist /app/web
-RUN mkdir -p /data && chown node:node /data
-USER node
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:8080/api/health || exit 1
+# Entrypoint выставляет права на /data (постоянное хранилище монтируется от root) и запускает процесс от пользователя node.
+ENTRYPOINT ["sh", "/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "--disable-warning=ExperimentalWarning", "src/index.js"]
