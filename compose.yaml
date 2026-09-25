@@ -1,0 +1,44 @@
+services:
+  app:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TZ: Europe/Moscow
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+    volumes:
+      - app-data:/data
+    restart: unless-stopped
+
+  # HTTPS для сервера с публичным IP/доменом: Caddy сам выпускает сертификат Let's Encrypt.
+  # Запуск: DOMAIN=<домен> в .env, затем docker compose --profile https up -d --build
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["https"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  # Необязательный HTTPS-туннель для мини-приложения (MAX требует HTTPS).
+  # Запуск: docker compose --profile tunnel up -d, адрес — в логах: docker compose logs tunnel
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate --url http://app:8080
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  caddy-data:

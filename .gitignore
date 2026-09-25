@@ -1,0 +1,9 @@
+node_modules/
+dist/
+var/
+*.db
+*.db-*
+.env
+.env.local
+.DS_Store
+certs/local-ca-bundle.pem
