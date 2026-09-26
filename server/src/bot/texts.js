@@ -78,7 +78,7 @@ export function askFlag(flag) {
   return `<b>Уточнение.</b> ${esc(flag.question)}`;
 }
 
-export function profileSummary(catalog, profile, itemsCount) {
+export function profileSummary(catalog, profile, itemsCount, hasApp = false) {
   const activity = catalog.activities.find((a) => a.id === profile.activity);
   const legal = catalog.legalForms.find((l) => l.id === profile.legalForm)?.title;
   return [
@@ -87,6 +87,9 @@ export function profileSummary(catalog, profile, itemsCount) {
     `Подобрал <b>${itemsCount} требований</b>, по которым вас могут проверить: ${esc(activity.authorities.join(', '))}.`,
     '',
     'Где удобнее пройти самопроверку?',
+    ...(hasApp
+      ? ['<i>В мини-приложении можно дополнительно приложить фото-подтверждения — например, огнетушителя или журнала.</i>']
+      : []),
   ].join('\n');
 }
 

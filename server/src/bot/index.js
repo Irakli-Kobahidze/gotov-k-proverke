@@ -92,9 +92,9 @@ export function createBot({ service, config, logger = console }) {
     const profile = service.saveProfile(userId, draft);
     service.setChatState(userId, {});
     const count = applicableItems(catalog, profile).length;
-    return send(userId, T.profileSummary(catalog, profile, count), [
+    return send(userId, T.profileSummary(catalog, profile, count, appButtonEnabled && Boolean(appTarget)), [
       [btn.callback('💬 Пройти здесь, в чате', 'go:chat')],
-      appRow('📱 Пройти в приложении (с фото)'),
+      appRow('📱 Пройти в мини-приложении'),
     ]);
   }
 
