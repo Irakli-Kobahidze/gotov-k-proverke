@@ -789,3 +789,8 @@ body {
   background: var(--bg);
   color: var(--text);
 }
+
+.evidence-toggle {
+  align-self: flex-start;
+  padding: 4px;
+}
