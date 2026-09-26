@@ -24,6 +24,9 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
   const [comment, setComment] = useState('');
   const [photoState, setPhotoState] = useState({});
   const [completing, setCompleting] = useState(false);
+  // Пока идёт автопереход к следующему вопросу, блок подтверждения не показываем — иначе он мелькает.
+  const [advancing, setAdvancing] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(false);
   const fileInput = useRef();
   const advanceTimer = useRef();
 
@@ -43,6 +46,7 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
   useEffect(() => {
     setComment(item?.comment || '');
     setShowDetails(false);
+    setShowEvidence(false);
   }, [item?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) {
@@ -64,8 +68,14 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
   const allDone = answered === total;
   const legalForm = check.profile.legalForm;
 
+  function goTo(n) {
+    clearTimeout(advanceTimer.current);
+    setAdvancing(false);
+    setIndex(n);
+  }
+
   async function answer(value) {
-    if (saving) return;
+    if (saving || advancing) return;
     haptic('light');
     setSaving(value);
     try {
@@ -75,7 +85,11 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
       const fallback = updated.items.findIndex((i) => !i.answer);
       const target = nextIndex !== -1 ? nextIndex : fallback !== -1 ? fallback : total;
       // Короткая пауза, чтобы пользователь увидел выбранный ответ.
-      advanceTimer.current = setTimeout(() => setIndex(target), value === 'yes' ? 250 : 450);
+      setAdvancing(true);
+      advanceTimer.current = setTimeout(() => {
+        setAdvancing(false);
+        setIndex(target);
+      }, value === 'yes' ? 250 : 450);
     } catch (err) {
       notify(err.message, 'error');
     } finally {
@@ -132,7 +146,7 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
               role="listitem"
               className={`qmap__dot ${i.answer ? `qmap__dot--${ANSWER[i.answer].tone}` : ''} ${n === index ? 'qmap__dot--current' : ''}`}
               onClick={() => {
-                setIndex(n);
+                goTo(n);
                 setShowMap(false);
               }}
               aria-label={`Вопрос ${n + 1}${i.answer ? `, ответ: ${ANSWER[i.answer].label}` : ''}`}
@@ -183,7 +197,7 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
               key={value}
               type="button"
               className={`answer answer--${a.tone} ${item.answer === value ? 'answer--selected' : ''}`}
-              disabled={Boolean(saving)}
+              disabled={Boolean(saving) || advancing}
               onClick={() => answer(value)}
             >
               <span className="answer__icon">{saving === value ? '…' : a.icon}</span>
@@ -231,7 +245,13 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
         )}
       </Card>
 
-      {item.answer && (
+      {item.answer && !advancing && !(showEvidence || item.hasPhoto || item.comment) && (
+        <button type="button" className="link-button evidence-toggle" onClick={() => setShowEvidence(true)}>
+          📎 Добавить фото или комментарий
+        </button>
+      )}
+
+      {item.answer && !advancing && (showEvidence || item.hasPhoto || item.comment) && (
         <Card className="evidence">
           <Typography.Label variant="medium-strong">Подтверждение (необязательно)</Typography.Label>
           <Textarea
@@ -279,10 +299,10 @@ export default function CheckScreen({ catalog, go, refresh, notify }) {
       )}
 
       <div className="row row--between nav-row">
-        <Button variant="ghost" size="medium" disabled={index === 0} onClick={() => setIndex(index - 1)}>
+        <Button variant="ghost" size="medium" disabled={index === 0} onClick={() => goTo(index - 1)}>
           ← Назад
         </Button>
-        <Button variant="ghost" size="medium" onClick={() => setIndex(index + 1)}>
+        <Button variant="ghost" size="medium" onClick={() => goTo(index + 1)}>
           {index + 1 < total ? 'Пропустить →' : 'К итогам →'}
         </Button>
       </div>
